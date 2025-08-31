@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Test Users - Hoax Threat System</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            color: #ffffff;
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .description {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .description p {
+            margin: 0 0 10px 0;
+            color: #ccc;
+        }
+        
+        .description strong {
+            color: #ffffff;
+        }
+        
+        .create-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 30px;
+        }
+        
+        .create-btn:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 123, 255, 0.3);
+        }
+        
+        .create-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output {
+            background: #0f0f0f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .success {
+            color: #28a745;
+        }
+        
+        .warning {
+            color: #ffc107;
+        }
+        
+        .error {
+            color: #dc3545;
+        }
+        
+        .info {
+            color: #17a2b8;
+        }
+        
+        .credentials {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #444;
+        }
+        
+        .credentials h3 {
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        
+        .credential-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #444;
+        }
+        
+        .credential-item:last-child {
+            border-bottom: none;
+        }
+        
+        .credential-email {
+            color: #007bff;
+            font-weight: 600;
+        }
+        
+        .credential-password {
+            color: #ffc107;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .back-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ Create Test Users</h1>
+        
+        <div class="description">
+            <p><strong>This tool will create test user accounts for the Hoax Bomb Threat Tracing System.</strong></p>
+            <p>Click the button below to create 4 test accounts that you can use to login to the system.</p>
+            <p>After creation, you can use any of these accounts to access the dashboard.</p>
+        </div>
+        
+        <button class="create-btn" onclick="createUsers()" id="createBtn">
+            Create Test User Accounts
+        </button>
+        
+        <div class="output" id="output">
+            <div class="info">Ready to create test users. Click the button above to start.</div>
+        </div>
+        
+        <div class="credentials" id="credentials" style="display: none;">
+            <h3>📋 Test Login Credentials</h3>
+            <div class="credential-item">
+                <span class="credential-email">admin@tracedna.com</span>
+                <span class="credential-password">admin123</span>
+            </div>
+            <div class="credential-item">
+                <span class="credential-email">analyst@tracedna.com</span>
+                <span class="credential-password">analyst123</span>
+            </div>
+            <div class="credential-item">
+                <span class="credential-email">investigator@tracedna.com</span>
+                <span class="credential-password">investigator123</span>
+            </div>
+            <div class="credential-item">
+                <span class="credential-email">test@tracedna.com</span>
+                <span class="credential-password">test123</span>
+            </div>
+        </div>
+        
+        <div class="back-link">
+            <a href="login.html">← Back to Login</a>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8_wj_TBlxDGzYljg5P5yARc8YI_eVfjU",
+            authDomain: "tracedna-6b504.firebaseapp.com",
+            projectId: "tracedna-6b504",
+            storageBucket: "tracedna-6b504.firebasestorage.app",
+            messagingSenderId: "80227253487",
+            appId: "1:80227253487:web:895355b662a8915b092f1a",
+            measurementId: "G-W211WK6WBE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        async function createUsers() {
+            const createBtn = document.getElementById('createBtn');
+            const output = document.getElementById('output');
+            const credentials = document.getElementById('credentials');
+            
+            // Disable button and show loading
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating Users...';
+            output.innerHTML = '<div class="info">🔄 Creating test user accounts...</div>';
+            
+            const users = [
+                { email: 'admin@tracedna.com', password: 'admin123', role: 'Admin' },
+                { email: 'analyst@tracedna.com', password: 'analyst123', role: 'Analyst' },
+                { email: 'investigator@tracedna.com', password: 'investigator123', role: 'Investigator' },
+                { email: 'test@tracedna.com', password: 'test123', role: 'Test User' }
+            ];
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const user of users) {
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(user.email, user.password);
+                    output.innerHTML += `<div class="success">✅ Created ${user.role}: ${user.email}</div>`;
+                    successCount++;
+                    console.log('User created:', userCredential.user);
+                } catch (error) {
+                    if (error.code === 'auth/email-already-in-use') {
+                        output.innerHTML += `<div class="warning">⚠️ User already exists: ${user.email}</div>`;
+                    } else if (error.code === 'auth/weak-password') {
+                        output.innerHTML += `<div class="error">❌ Password too weak for: ${user.email}</div>`;
+                    } else if (error.code === 'auth/invalid-email') {
+                        output.innerHTML += `<div class="error">❌ Invalid email format: ${user.email}</div>`;
+                    } else {
+                        output.innerHTML += `<div class="error">❌ Error creating ${user.email}: ${error.message}</div>`;
+                    }
+                    errorCount++;
+                    console.error('Error creating user:', error);
+                }
+            }
+            
+            // Show results
+            if (successCount > 0) {
+                output.innerHTML += `<div class="success"><br><strong>🎉 Successfully created ${successCount} user(s)!</strong></div>`;
+                credentials.style.display = 'block';
+            }
+            
+            if (errorCount > 0) {
+                output.innerHTML += `<div class="warning"><br>⚠️ ${errorCount} user(s) had issues (may already exist)</div>`;
+            }
+            
+            output.innerHTML += `<div class="info"><br>💡 You can now login with any of the created accounts.</div>`;
+            
+            // Re-enable button
+            createBtn.disabled = false;
+            createBtn.textContent = 'Create Test User Accounts';
+        }
+
+        // Check if users already exist
+        document.addEventListener('DOMContentLoaded', function() {
+            const output = document.getElementById('output');
+            output.innerHTML = '<div class="info">🔍 Checking Firebase connection...</div>';
+            
+            // Test Firebase connection
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    output.innerHTML += '<div class="warning">⚠️ You are currently logged in. You may want to logout first.</div>';
+                } else {
+                    output.innerHTML += '<div class="success">✅ Firebase connected successfully. Ready to create users.</div>';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Analysis Graph - Hoax Bomb Threat Tracing System</title>
+    <link rel="stylesheet" href="link-graph.css">
+    <!-- Cytoscape.js -->
+    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="graph-container">
+        <!-- Header -->
+        <header class="graph-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="goBack()">
+                    <span class="back-icon">←</span>
+                    Back to Dashboard
+                </button>
+                <div class="page-title">
+                    <h1>Link Analysis Graph</h1>
+                    <p class="page-subtitle">Visualize connections between events, devices, and TSDNA families</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="graph-controls">
+                    <button class="control-btn" onclick="resetView()" title="Reset View">
+                        Reset
+                    </button>
+                    <button class="control-btn" onclick="toggleLayout()" title="Toggle Layout">
+                        Layout
+                    </button>
+                    <button class="control-btn" onclick="exportGraph()" title="Export Graph">
+                        Export
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="graph-main">
+            <!-- Sidebar -->
+            <aside class="graph-sidebar">
+                <div class="sidebar-section">
+                    <h3>Graph Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-number" id="eventCount">2</span>
+                            <span class="stat-label">Events</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="deviceCount">2</span>
+                            <span class="stat-label">Devices</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="familyCount">1</span>
+                            <span class="stat-label">TSDNA Families</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="connectionCount">4</span>
+                            <span class="stat-label">Connections</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Node Legend</h3>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-node event-node"></div>
+                            <span class="legend-label">Events</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-node device-node"></div>
+                            <span class="legend-label">Devices</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-node family-node"></div>
+                            <span class="legend-label">TSDNA Families</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Filters</h3>
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <input type="checkbox" id="showEvents" checked onchange="updateFilters()">
+                                <span class="checkmark"></span>
+                                Show Events
+                            </label>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <input type="checkbox" id="showDevices" checked onchange="updateFilters()">
+                                <span class="checkmark"></span>
+                                Show Devices
+                            </label>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">
+                                <input type="checkbox" id="showFamilies" checked onchange="updateFilters()">
+                                <span class="checkmark"></span>
+                                Show TSDNA Families
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Selected Node</h3>
+                    <div class="node-details" id="nodeDetails">
+                        <p class="no-selection">Click on a node to view details</p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Graph Area -->
+            <div class="graph-area">
+                <div id="cy" class="cytoscape-container"></div>
+                
+                <!-- Graph Loading Overlay -->
+                <div class="loading-overlay" id="loadingOverlay">
+                    <div class="loading-spinner"></div>
+                    <p>Loading graph...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8_wj_TBlxDGzYljg5P5yARc8YI_eVfjU",
+            authDomain: "tracedna-6b504.firebaseapp.com",
+            projectId: "tracedna-6b504",
+            storageBucket: "tracedna-6b504.firebasestorage.app",
+            messagingSenderId: "80227253487",
+            appId: "1:80227253487:web:895355b662a8915b092f1a",
+            measurementId: "G-W211WK6WBE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Global variables
+        let cy;
+        let currentLayout = 'cose';
+
+        // Sample graph data
+        const graphData = {
+            nodes: [
+                // Events
+                {
+                    data: {
+                        id: 'E1',
+                        label: 'THR-2024-001',
+                        type: 'event',
+                        risk: 'High',
+                        source: 'Email',
+                        timestamp: '2024-01-15 14:32:18',
+                        content: 'Bomb threat at Central Station'
+                    }
+                },
+                {
+                    data: {
+                        id: 'E2',
+                        label: 'THR-2024-002',
+                        type: 'event',
+                        risk: 'Medium',
+                        source: 'Social',
+                        timestamp: '2024-01-15 13:45:22',
+                        content: 'Something big happening downtown'
+                    }
+                },
+                // Devices
+                {
+                    data: {
+                        id: 'D1',
+                        label: 'Device-192.168.1.45',
+                        type: 'device',
+                        ip: '192.168.1.45',
+                        userAgent: 'Chrome/120.0.0.0',
+                        location: 'Unknown',
+                        firstSeen: '2024-01-15 14:30:00'
+                    }
+                },
+                {
+                    data: {
+                        id: 'D2',
+                        label: 'Device-203.0.113.45',
+                        type: 'device',
+                        ip: '203.0.113.45',
+                        userAgent: 'Firefox/121.0.0',
+                        location: 'Unknown',
+                        firstSeen: '2024-01-15 13:40:00'
+                    }
+                },
+                // TSDNA Family
+                {
+                    data: {
+                        id: 'F123',
+                        label: 'TSDNA-FAM-123',
+                        type: 'family',
+                        similarity: 0.87,
+                        confidence: 'High',
+                        linkedThreats: 3,
+                        firstSeen: '2023-12-08'
+                    }
+                }
+            ],
+            edges: [
+                // Event to Device connections
+                {
+                    data: {
+                        id: 'E1-D1',
+                        source: 'E1',
+                        target: 'D1',
+                        type: 'event-device',
+                        strength: 0.95
+                    }
+                },
+                {
+                    data: {
+                        id: 'E2-D2',
+                        source: 'E2',
+                        target: 'D2',
+                        type: 'event-device',
+                        strength: 0.88
+                    }
+                },
+                // Event to TSDNA Family connections
+                {
+                    data: {
+                        id: 'E1-F123',
+                        source: 'E1',
+                        target: 'F123',
+                        type: 'event-family',
+                        strength: 0.89
+                    }
+                },
+                {
+                    data: {
+                        id: 'E2-F123',
+                        source: 'E2',
+                        target: 'F123',
+                        type: 'event-family',
+                        strength: 0.82
+                    }
+                }
+            ]
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            initializeGraph();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            auth.onAuthStateChanged((user) => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+
+        // Initialize Cytoscape graph
+        function initializeGraph() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            // Show loading
+            loadingOverlay.style.display = 'flex';
+
+            // Initialize Cytoscape
+            cy = cytoscape({
+                container: document.getElementById('cy'),
+                elements: graphData,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#007bff',
+                            'label': 'data(label)',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'color': '#ffffff',
+                            'font-size': '12px',
+                            'font-weight': 'bold',
+                            'text-outline-width': 2,
+                            'text-outline-color': '#000000',
+                            'width': '60px',
+                            'height': '60px',
+                            'border-width': 2,
+                            'border-color': '#ffffff'
+                        }
+                    },
+                    {
+                        selector: 'node[type="event"]',
+                        style: {
+                            'background-color': '#007bff',
+                            'shape': 'ellipse',
+                            'width': '80px',
+                            'height': '50px'
+                        }
+                    },
+                    {
+                        selector: 'node[type="device"]',
+                        style: {
+                            'background-color': '#fd7e14',
+                            'shape': 'rectangle',
+                            'width': '70px',
+                            'height': '70px'
+                        }
+                    },
+                    {
+                        selector: 'node[type="family"]',
+                        style: {
+                            'background-color': '#dc3545',
+                            'shape': 'hexagon',
+                            'width': '80px',
+                            'height': '80px'
+                        }
+                    },
+                    {
+                        selector: 'node[risk="High"]',
+                        style: {
+                            'border-color': '#dc3545',
+                            'border-width': 3
+                        }
+                    },
+                    {
+                        selector: 'node[risk="Medium"]',
+                        style: {
+                            'border-color': '#ffc107',
+                            'border-width': 3
+                        }
+                    },
+                    {
+                        selector: 'node[risk="Low"]',
+                        style: {
+                            'border-color': '#28a745',
+                            'border-width': 3
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': '3px',
+                            'line-color': '#666666',
+                            'target-arrow-color': '#666666',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier',
+                            'opacity': 0.8
+                        }
+                    },
+                    {
+                        selector: 'edge[type="event-device"]',
+                        style: {
+                            'line-color': '#007bff',
+                            'target-arrow-color': '#007bff'
+                        }
+                    },
+                    {
+                        selector: 'edge[type="event-family"]',
+                        style: {
+                            'line-color': '#dc3545',
+                            'target-arrow-color': '#dc3545'
+                        }
+                    },
+                    {
+                        selector: 'node:selected',
+                        style: {
+                            'border-color': '#ffffff',
+                            'border-width': 4,
+                            'background-color': '#ffffff',
+                            'color': '#000000'
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'cose',
+                    animate: true,
+                    animationDuration: 1000,
+                    fit: true,
+                    padding: 50,
+                    nodeRepulsion: 4000,
+                    idealEdgeLength: 200,
+                    edgeElasticity: 0.45,
+                    nestingFactor: 0.1,
+                    gravity: 0.25,
+                    numIter: 2500,
+                    initialTemp: 200,
+                    coolingFactor: 0.95,
+                    minTemp: 1.0
+                }
+            });
+
+            // Add event listeners
+            setupEventListeners();
+
+            // Hide loading
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+            }, 1000);
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Node click events
+            cy.on('tap', 'node', function(evt) {
+                const node = evt.target;
+                showNodeDetails(node);
+            });
+
+            // Background click to clear selection
+            cy.on('tap', function(evt) {
+                if (evt.target === cy) {
+                    clearNodeDetails();
+                }
+            });
+
+            // Node hover effects
+            cy.on('mouseover', 'node', function(evt) {
+                const node = evt.target;
+                node.style('opacity', 0.8);
+            });
+
+            cy.on('mouseout', 'node', function(evt) {
+                const node = evt.target;
+                node.style('opacity', 1);
+            });
+        }
+
+        // Show node details in sidebar
+        function showNodeDetails(node) {
+            const nodeDetails = document.getElementById('nodeDetails');
+            const data = node.data();
+            
+            let detailsHTML = '';
+            
+            if (data.type === 'event') {
+                detailsHTML = `
+                    <div class="node-detail-card event-detail">
+                        <h4>Event Details</h4>
+                        <div class="detail-item">
+                            <span class="detail-label">ID:</span>
+                            <span class="detail-value">${data.label}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Risk:</span>
+                            <span class="detail-value risk-${data.risk.toLowerCase()}">${data.risk}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Source:</span>
+                            <span class="detail-value">${data.source}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Timestamp:</span>
+                            <span class="detail-value">${data.timestamp}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Content:</span>
+                            <span class="detail-value">${data.content}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (data.type === 'device') {
+                detailsHTML = `
+                    <div class="node-detail-card device-detail">
+                        <h4>Device Details</h4>
+                        <div class="detail-item">
+                            <span class="detail-label">ID:</span>
+                            <span class="detail-value">${data.label}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">IP Address:</span>
+                            <span class="detail-value">${data.ip}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">User Agent:</span>
+                            <span class="detail-value">${data.userAgent}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">${data.location}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">First Seen:</span>
+                            <span class="detail-value">${data.firstSeen}</span>
+                        </div>
+                    </div>
+                `;
+            } else if (data.type === 'family') {
+                detailsHTML = `
+                    <div class="node-detail-card family-detail">
+                        <h4>TSDNA Family Details</h4>
+                        <div class="detail-item">
+                            <span class="detail-label">Family ID:</span>
+                            <span class="detail-value">${data.label}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Similarity:</span>
+                            <span class="detail-value">${Math.round(data.similarity * 100)}%</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Confidence:</span>
+                            <span class="detail-value">${data.confidence}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Linked Threats:</span>
+                            <span class="detail-value">${data.linkedThreats}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">First Seen:</span>
+                            <span class="detail-value">${data.firstSeen}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            nodeDetails.innerHTML = detailsHTML;
+        }
+
+        // Clear node details
+        function clearNodeDetails() {
+            const nodeDetails = document.getElementById('nodeDetails');
+            nodeDetails.innerHTML = '<p class="no-selection">Click on a node to view details</p>';
+        }
+
+        // Update filters
+        function updateFilters() {
+            const showEvents = document.getElementById('showEvents').checked;
+            const showDevices = document.getElementById('showDevices').checked;
+            const showFamilies = document.getElementById('showFamilies').checked;
+
+            cy.elements().style('display', 'element');
+
+            if (!showEvents) {
+                cy.elements('node[type="event"]').style('display', 'none');
+                cy.elements('edge[source*="E"]').style('display', 'none');
+            }
+            if (!showDevices) {
+                cy.elements('node[type="device"]').style('display', 'none');
+                cy.elements('edge[target*="D"]').style('display', 'none');
+            }
+            if (!showFamilies) {
+                cy.elements('node[type="family"]').style('display', 'none');
+                cy.elements('edge[target*="F"]').style('display', 'none');
+            }
+        }
+
+        // Reset view
+        function resetView() {
+            cy.fit();
+            cy.center();
+        }
+
+        // Toggle layout
+        function toggleLayout() {
+            const layouts = ['cose', 'circle', 'grid', 'breadthfirst'];
+            const currentIndex = layouts.indexOf(currentLayout);
+            const nextIndex = (currentIndex + 1) % layouts.length;
+            currentLayout = layouts[nextIndex];
+
+            cy.layout({
+                name: currentLayout,
+                animate: true,
+                animationDuration: 1000,
+                fit: true,
+                padding: 50
+            }).run();
+        }
+
+        // Export graph
+        function exportGraph() {
+            const png = cy.png({
+                output: 'blob',
+                bg: '#1a1a1a',
+                full: true
+            });
+            
+            const link = document.createElement('a');
+            link.download = 'link-analysis-graph.png';
+            link.href = URL.createObjectURL(png);
+            link.click();
+        }
+
+        // Navigation functions
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+    </script>
+</body>
+</html>

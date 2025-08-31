@@ -1,0 +1,328 @@
+# Hoax Bomb Threat Tracing System - .gitignore
+
+# ===========================================
+# Operating System Files
+# ===========================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# Development Environment
+# ===========================================
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ===========================================
+# Node.js (if using build tools)
+# ===========================================
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.npm
+.yarn-integrity
+
+# ===========================================
+# Build and Distribution
+# ===========================================
+
+# Build outputs
+dist/
+build/
+out/
+*.min.js
+*.min.css
+
+# ===========================================
+# Logs and Debugging
+# ===========================================
+
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ===========================================
+# Environment and Configuration
+# ===========================================
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Configuration files with sensitive data
+config.json
+secrets.json
+firebase-adminsdk-*.json
+service-account-key.json
+
+# ===========================================
+# Firebase
+# ===========================================
+
+# Firebase configuration (if contains sensitive data)
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.firebaserc
+
+# ===========================================
+# Temporary Files
+# ===========================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+
+# ===========================================
+# Database
+# ===========================================
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================================
+# Documentation and Notes
+# ===========================================
+
+# Personal notes and documentation
+NOTES.md
+TODO.md
+PERSONAL.md
+scratch.md
+
+# ===========================================
+# Security and Sensitive Data
+# ===========================================
+
+# API keys and secrets
+api-keys.txt
+secrets.txt
+credentials.json
+*.pem
+*.key
+*.crt
+*.p12
+
+# ===========================================
+# Testing
+# ===========================================
+
+# Test coverage
+coverage/
+.nyc_output/
+.coverage
+htmlcov/
+
+# Test results
+test-results/
+junit.xml
+
+# ===========================================
+# Cache and Temporary Directories
+# ===========================================
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# ===========================================
+# Python (if using Python backend)
+# ===========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===========================================
+# Project Specific
+# ===========================================
+
+# Evidence and case files (sensitive data)
+evidence/
+cases/
+exports/
+reports/
+
+# User uploads and attachments
+uploads/
+attachments/
+media/
+
+# Backup files
+backups/
+*.backup
+
+# Local development overrides
+local-config.js
+local-styles.css

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Case Management - Hoax Bomb Threat Tracing System</title>
+    <link rel="stylesheet" href="case-management.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="case-container">
+        <!-- Header -->
+        <header class="case-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="goBack()">
+                    <span class="back-icon">←</span>
+                    Back to Dashboard
+                </button>
+                <div class="page-title">
+                    <h1>Case Management</h1>
+                    <p class="page-subtitle">Organize and manage threat investigation cases</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="case-info">
+                    <span class="case-id">Case: <strong>#CASE-2024-001</strong></span>
+                    <span class="case-status status-active">Active</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="case-main">
+            <!-- Timeline Section -->
+            <section class="timeline-section">
+                <div class="section-header">
+                    <h2>Event Timeline</h2>
+                    <div class="timeline-controls">
+                        <button class="control-btn" onclick="expandAllTimeline()" title="Expand All">
+                            Expand All
+                        </button>
+                        <button class="control-btn" onclick="collapseAllTimeline()" title="Collapse All">
+                            Collapse All
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="timeline-container">
+                    <div class="timeline" id="eventTimeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Notes & Actions Section -->
+            <section class="notes-actions-section">
+                <!-- Investigator Notes -->
+                <div class="notes-card">
+                    <div class="card-header">
+                        <h3>Investigator Notes</h3>
+                        <div class="notes-meta">
+                            <span class="last-saved" id="lastSaved">Last saved: Never</span>
+                            <button class="save-btn" onclick="saveNotes()" title="Save Notes">
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    <div class="notes-content">
+                        <textarea 
+                            id="investigatorNotes" 
+                            placeholder="Enter your investigation notes here...&#10;&#10;Include:&#10;• Key findings&#10;• Suspect information&#10;• Evidence collected&#10;• Next steps&#10;• Contact information"
+                            rows="12"
+                        ></textarea>
+                        <div class="notes-footer">
+                            <div class="character-count">
+                                <span id="charCount">0</span> characters
+                            </div>
+                            <div class="notes-actions">
+                                <button class="action-btn secondary" onclick="clearNotes()">Clear</button>
+                                <button class="action-btn secondary" onclick="loadTemplate()">Load Template</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Case Actions -->
+                <div class="actions-card">
+                    <div class="card-header">
+                        <h3>Case Actions</h3>
+                    </div>
+                    <div class="actions-content">
+                        <div class="action-group">
+                            <button class="action-btn primary" onclick="createCase()">
+                                Create Case
+                            </button>
+                            <p class="action-description">Start a new investigation case</p>
+                        </div>
+                        
+                        <div class="action-group">
+                            <button class="action-btn primary" onclick="mergeEvents()">
+                                Merge Events
+                            </button>
+                            <p class="action-description">Link related threat events</p>
+                        </div>
+                        
+                        <div class="action-group">
+                            <button class="action-btn primary" onclick="exportEvidence()">
+                                Export Evidence
+                            </button>
+                            <p class="action-description">Generate evidence package</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Case Statistics -->
+                <div class="stats-card">
+                    <div class="card-header">
+                        <h3>Case Statistics</h3>
+                    </div>
+                    <div class="stats-content">
+                        <div class="stat-row">
+                            <span class="stat-label">Total Events:</span>
+                            <span class="stat-value" id="totalEvents">5</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">High Risk:</span>
+                            <span class="stat-value risk-high" id="highRiskEvents">2</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Medium Risk:</span>
+                            <span class="stat-value risk-medium" id="mediumRiskEvents">2</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Low Risk:</span>
+                            <span class="stat-value risk-low" id="lowRiskEvents">1</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Time Span:</span>
+                            <span class="stat-value" id="timeSpan">3 days</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Linked Devices:</span>
+                            <span class="stat-value" id="linkedDevices">3</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for Create Case -->
+    <div class="modal" id="createCaseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Case</h3>
+                <button class="modal-close" onclick="closeModal('createCaseModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createCaseForm">
+                    <div class="form-group">
+                        <label for="caseTitle">Case Title</label>
+                        <input type="text" id="caseTitle" placeholder="Enter case title..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="caseDescription">Description</label>
+                        <textarea id="caseDescription" placeholder="Brief description of the case..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="casePriority">Priority</label>
+                        <select id="casePriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="assignedInvestigator">Assigned Investigator</label>
+                        <input type="text" id="assignedInvestigator" placeholder="Investigator name..." required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" onclick="closeModal('createCaseModal')">Cancel</button>
+                <button class="action-btn primary" onclick="submitCreateCase()">Create Case</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Merge Events -->
+    <div class="modal" id="mergeEventsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Merge Events</h3>
+                <button class="modal-close" onclick="closeModal('mergeEventsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Select events to merge into a single case:</p>
+                <div class="event-selection">
+                    <div class="event-checkbox">
+                        <input type="checkbox" id="event1" value="THR-2024-001">
+                        <label for="event1">THR-2024-001 - Bomb threat at Central Station</label>
+                    </div>
+                    <div class="event-checkbox">
+                        <input type="checkbox" id="event2" value="THR-2024-002">
+                        <label for="event2">THR-2024-002 - Something big happening downtown</label>
+                    </div>
+                    <div class="event-checkbox">
+                        <input type="checkbox" id="event3" value="THR-2024-003">
+                        <label for="event3">THR-2024-003 - Suspicious package report</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" onclick="closeModal('mergeEventsModal')">Cancel</button>
+                <button class="action-btn primary" onclick="submitMergeEvents()">Merge Events</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8_wj_TBlxDGzYljg5P5yARc8YI_eVfjU",
+            authDomain: "tracedna-6b504.firebaseapp.com",
+            projectId: "tracedna-6b504",
+            storageBucket: "tracedna-6b504.firebasestorage.app",
+            messagingSenderId: "80227253487",
+            appId: "1:80227253487:web:895355b662a8915b092f1a",
+            measurementId: "G-W211WK6WBE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Sample case data
+        const caseData = {
+            caseId: "CASE-2024-001",
+            status: "Active",
+            events: [
+                {
+                    id: "THR-2024-001",
+                    date: "2024-01-15",
+                    time: "14:32:18",
+                    risk: "High",
+                    source: "Email",
+                    content: "Bomb threat at Central Station",
+                    location: "Central Station",
+                    device: "Device-192.168.1.45",
+                    expanded: false
+                },
+                {
+                    id: "THR-2024-002",
+                    date: "2024-01-15",
+                    time: "13:45:22",
+                    risk: "Medium",
+                    source: "Social",
+                    content: "Something big happening downtown",
+                    location: "Downtown Area",
+                    device: "Device-203.0.113.45",
+                    expanded: false
+                },
+                {
+                    id: "THR-2024-003",
+                    date: "2024-01-14",
+                    time: "09:15:30",
+                    risk: "High",
+                    source: "Phone",
+                    content: "Suspicious package report",
+                    location: "City Hall",
+                    device: "Device-198.51.100.42",
+                    expanded: false
+                },
+                {
+                    id: "THR-2024-004",
+                    date: "2024-01-13",
+                    time: "16:22:45",
+                    risk: "Low",
+                    source: "Email",
+                    content: "Anonymous tip about suspicious activity",
+                    location: "University Campus",
+                    device: "Device-192.168.1.45",
+                    expanded: false
+                },
+                {
+                    id: "THR-2024-005",
+                    date: "2024-01-12",
+                    time: "11:08:12",
+                    risk: "Medium",
+                    source: "Social",
+                    content: "Threatening message on social media",
+                    location: "Online",
+                    device: "Device-203.0.113.45",
+                    expanded: false
+                }
+            ],
+            notes: "",
+            statistics: {
+                totalEvents: 5,
+                highRisk: 2,
+                mediumRisk: 2,
+                lowRisk: 1,
+                timeSpan: "3 days",
+                linkedDevices: 3
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            initializePage();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            auth.onAuthStateChanged((user) => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+
+        // Initialize page
+        function initializePage() {
+            loadTimeline();
+            loadNotes();
+            updateStatistics();
+            setupEventListeners();
+        }
+
+        // Load timeline
+        function loadTimeline() {
+            const timeline = document.getElementById('eventTimeline');
+            timeline.innerHTML = '';
+
+            caseData.events.forEach((event, index) => {
+                const timelineItem = createTimelineItem(event, index);
+                timeline.appendChild(timelineItem);
+            });
+        }
+
+        // Create timeline item
+        function createTimelineItem(event, index) {
+            const item = document.createElement('div');
+            item.className = `timeline-item ${event.expanded ? 'expanded' : ''}`;
+            
+            const riskClass = event.risk.toLowerCase();
+            const riskIcon = getRiskIcon(event.risk);
+            
+            item.innerHTML = `
+                <div class="timeline-marker">
+                    <div class="marker-dot risk-${riskClass}"></div>
+                    ${index < caseData.events.length - 1 ? '<div class="timeline-line"></div>' : ''}
+                </div>
+                <div class="timeline-content">
+                    <div class="timeline-header" onclick="toggleTimelineItem(${index})">
+                        <div class="event-info">
+                            <h4 class="event-id">${event.id}</h4>
+                            <span class="event-date">${event.date} ${event.time}</span>
+                        </div>
+                        <div class="event-meta">
+                            <span class="risk-badge risk-${riskClass}">
+                                ${riskIcon} ${event.risk}
+                            </span>
+                            <span class="source-badge source-${event.source.toLowerCase()}">${event.source}</span>
+                            <span class="expand-icon">${event.expanded ? '▼' : '▶'}</span>
+                        </div>
+                    </div>
+                    <div class="timeline-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Content:</span>
+                            <span class="detail-value">${event.content}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Location:</span>
+                            <span class="detail-value">${event.location}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Device:</span>
+                            <span class="detail-value">${event.device}</span>
+                        </div>
+                        <div class="timeline-actions">
+                            <button class="timeline-btn" onclick="viewEventDetails('${event.id}')">View Details</button>
+                            <button class="timeline-btn" onclick="addToCase('${event.id}')">Add to Case</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            return item;
+        }
+
+        // Get risk icon
+        function getRiskIcon(risk) {
+            switch(risk) {
+                case 'High': return '';
+                case 'Medium': return '';
+                case 'Low': return '';
+                default: return '';
+            }
+        }
+
+        // Toggle timeline item
+        function toggleTimelineItem(index) {
+            caseData.events[index].expanded = !caseData.events[index].expanded;
+            loadTimeline();
+        }
+
+        // Expand all timeline items
+        function expandAllTimeline() {
+            caseData.events.forEach(event => {
+                event.expanded = true;
+            });
+            loadTimeline();
+        }
+
+        // Collapse all timeline items
+        function collapseAllTimeline() {
+            caseData.events.forEach(event => {
+                event.expanded = false;
+            });
+            loadTimeline();
+        }
+
+        // Load notes
+        function loadNotes() {
+            const notesTextarea = document.getElementById('investigatorNotes');
+            notesTextarea.value = caseData.notes;
+            updateCharacterCount();
+        }
+
+        // Update character count
+        function updateCharacterCount() {
+            const textarea = document.getElementById('investigatorNotes');
+            const charCount = document.getElementById('charCount');
+            charCount.textContent = textarea.value.length;
+        }
+
+        // Save notes
+        function saveNotes() {
+            const notesTextarea = document.getElementById('investigatorNotes');
+            caseData.notes = notesTextarea.value;
+            
+            // Update last saved time
+            const lastSaved = document.getElementById('lastSaved');
+            const now = new Date();
+            lastSaved.textContent = `Last saved: ${now.toLocaleTimeString()}`;
+            
+            // Show save confirmation
+            showNotification('Notes saved successfully!', 'success');
+        }
+
+        // Clear notes
+        function clearNotes() {
+            if (confirm('Are you sure you want to clear all notes?')) {
+                document.getElementById('investigatorNotes').value = '';
+                updateCharacterCount();
+            }
+        }
+
+        // Load template
+        function loadTemplate() {
+            const template = `INVESTIGATION NOTES - ${caseData.caseId}
+
+KEY FINDINGS:
+• Multiple threats targeting public locations
+• Consistent threat pattern across different sources
+• Same device fingerprint in multiple incidents
+
+SUSPECT INFORMATION:
+• Unknown at this time
+• Possible connection to previous cases
+• Technical sophistication suggests organized group
+
+EVIDENCE COLLECTED:
+• Email headers and metadata
+• Device fingerprints (JA3, User-Agent)
+• TSDNA family connections
+• Geolocation data (where available)
+
+NEXT STEPS:
+• Coordinate with local law enforcement
+• Request additional surveillance footage
+• Analyze device patterns for location tracking
+• Review similar cases in database
+
+CONTACT INFORMATION:
+• Lead Investigator: [Name]
+• Case Manager: [Name]
+• Technical Analyst: [Name]
+• Law Enforcement Contact: [Name]`;
+
+            document.getElementById('investigatorNotes').value = template;
+            updateCharacterCount();
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('totalEvents').textContent = caseData.statistics.totalEvents;
+            document.getElementById('highRiskEvents').textContent = caseData.statistics.highRisk;
+            document.getElementById('mediumRiskEvents').textContent = caseData.statistics.mediumRisk;
+            document.getElementById('lowRiskEvents').textContent = caseData.statistics.lowRisk;
+            document.getElementById('timeSpan').textContent = caseData.statistics.timeSpan;
+            document.getElementById('linkedDevices').textContent = caseData.statistics.linkedDevices;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            const notesTextarea = document.getElementById('investigatorNotes');
+            notesTextarea.addEventListener('input', updateCharacterCount);
+            
+            // Auto-save notes every 30 seconds
+            setInterval(() => {
+                if (notesTextarea.value !== caseData.notes) {
+                    saveNotes();
+                }
+            }, 30000);
+        }
+
+        // Case Actions
+        function createCase() {
+            document.getElementById('createCaseModal').style.display = 'flex';
+        }
+
+        function mergeEvents() {
+            document.getElementById('mergeEventsModal').style.display = 'flex';
+        }
+
+        function exportEvidence() {
+            showNotification('Generating evidence package...', 'info');
+            
+            // Simulate export process
+            setTimeout(() => {
+                const evidenceData = {
+                    caseId: caseData.caseId,
+                    events: caseData.events,
+                    notes: caseData.notes,
+                    statistics: caseData.statistics,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(evidenceData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `evidence-${caseData.caseId}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showNotification('Evidence package exported successfully!', 'success');
+            }, 2000);
+        }
+
+        // Modal functions
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function submitCreateCase() {
+            const form = document.getElementById('createCaseForm');
+            const formData = new FormData(form);
+            
+            const newCase = {
+                title: document.getElementById('caseTitle').value,
+                description: document.getElementById('caseDescription').value,
+                priority: document.getElementById('casePriority').value,
+                investigator: document.getElementById('assignedInvestigator').value,
+                createdDate: new Date().toISOString()
+            };
+            
+            showNotification('New case created successfully!', 'success');
+            closeModal('createCaseModal');
+            form.reset();
+        }
+
+        function submitMergeEvents() {
+            const selectedEvents = [];
+            const checkboxes = document.querySelectorAll('#mergeEventsModal input[type="checkbox"]:checked');
+            
+            checkboxes.forEach(checkbox => {
+                selectedEvents.push(checkbox.value);
+            });
+            
+            if (selectedEvents.length < 2) {
+                showNotification('Please select at least 2 events to merge', 'error');
+                return;
+            }
+            
+            showNotification(`Merged ${selectedEvents.length} events successfully!`, 'success');
+            closeModal('mergeEventsModal');
+        }
+
+        // Utility functions
+        function viewEventDetails(eventId) {
+            window.location.href = `threat-detail.html?id=${eventId}`;
+        }
+
+        function addToCase(eventId) {
+            showNotification(`Event ${eventId} added to case`, 'success');
+        }
+
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            // Add to page
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            // Remove notification after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

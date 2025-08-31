@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threat Details - Hoax Bomb Threat Tracing System</title>
+    <link rel="stylesheet" href="threat-detail.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="threat-detail-container">
+        <!-- Header -->
+        <header class="detail-header">
+            <div class="header-left">
+                <button class="back-btn" onclick="goBack()">
+                    <span class="back-icon">←</span>
+                    Back to Dashboard
+                </button>
+                <div class="threat-title">
+                    <h1 id="threatId">THR-2024-001</h1>
+                    <span class="risk-badge" id="riskBadge">High Risk</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="threat-meta">
+                    <span class="timestamp" id="threatTimestamp">2024-01-15 14:32:18</span>
+                    <span class="source-badge" id="sourceBadge">Email</span>
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn primary" onclick="createCase()">Create Case</button>
+                    <button class="action-btn secondary" onclick="exportEvidence()">Export Evidence</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="detail-content">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Raw Text Card -->
+                <div class="detail-card">
+                    <div class="card-header">
+                        <h2>Raw Text</h2>
+                        <span class="card-subtitle">Original message content</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="raw-text" id="rawText">
+                            Loading threat content...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Extracted Entities Card -->
+                <div class="detail-card">
+                    <div class="card-header">
+                        <h2>Extracted Entities</h2>
+                        <span class="card-subtitle">spaCy NLP analysis results</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="entities-grid" id="entitiesGrid">
+                            <div class="entity-category">
+                                <h3>Locations</h3>
+                                <div class="entity-list" id="locationsList">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                            <div class="entity-category">
+                                <h3>Time References</h3>
+                                <div class="entity-list" id="timeList">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                            <div class="entity-category">
+                                <h3>Targets</h3>
+                                <div class="entity-list" id="targetsList">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                            <div class="entity-category">
+                                <h3>Persons</h3>
+                                <div class="entity-list" id="personsList">
+                                    <!-- Populated by JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- Metadata Card -->
+                <div class="detail-card">
+                    <div class="card-header">
+                        <h2>Metadata</h2>
+                        <span class="card-subtitle">Technical information & headers</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="metadata-grid" id="metadataGrid">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TSDNA Card -->
+                <div class="detail-card">
+                    <div class="card-header">
+                        <h2>TSDNA Analysis</h2>
+                        <span class="card-subtitle">Threat Signature DNA fingerprinting</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="tsdna-content" id="tsdnaContent">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Risk Breakdown Card -->
+                <div class="detail-card">
+                    <div class="card-header">
+                        <h2>Risk Breakdown</h2>
+                        <span class="card-subtitle">Weighted risk factor analysis</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="risk-chart-container">
+                            <canvas id="riskChart" width="300" height="300"></canvas>
+                        </div>
+                        <div class="risk-factors" id="riskFactors">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8_wj_TBlxDGzYljg5P5yARc8YI_eVfjU",
+            authDomain: "tracedna-6b504.firebaseapp.com",
+            projectId: "tracedna-6b504",
+            storageBucket: "tracedna-6b504.firebasestorage.app",
+            messagingSenderId: "80227253487",
+            appId: "1:80227253487:web:895355b662a8915b092f1a",
+            measurementId: "G-W211WK6WBE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Dummy threat data
+        const threatData = {
+            id: "THR-2024-001",
+            source: "Email",
+            riskLevel: "High",
+            timestamp: "2024-01-15 14:32:18",
+            rawText: "URGENT: There is a bomb planted at Central Station. It will explode at 3:00 PM today. This is not a drill. The device is hidden near the ticket counter. Evacuate immediately or people will die. You have been warned.",
+            
+            metadata: {
+                senderIP: "192.168.1.45",
+                senderEmail: "anonymous@temp-mail.org",
+                userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                messageId: "<20240115143218.abc123@temp-mail.org>",
+                receivedFrom: "mail.temp-mail.org [203.0.113.45]",
+                authenticationResults: "spf=pass smtp.mailfrom=temp-mail.org",
+                xOriginatingIP: "203.0.113.45",
+                contentType: "text/plain; charset=UTF-8",
+                contentLength: "342 bytes",
+                subject: "URGENT SECURITY ALERT",
+                returnPath: "anonymous@temp-mail.org"
+            },
+            
+            entities: {
+                locations: [
+                    { text: "Central Station", type: "GPE", confidence: 0.95 },
+                    { text: "ticket counter", type: "LOC", confidence: 0.88 }
+                ],
+                timeReferences: [
+                    { text: "3:00 PM today", type: "TIME", confidence: 0.92 },
+                    { text: "today", type: "DATE", confidence: 0.89 }
+                ],
+                targets: [
+                    { text: "Central Station", type: "TARGET", confidence: 0.94 },
+                    { text: "people", type: "TARGET", confidence: 0.76 }
+                ],
+                persons: [
+                    { text: "anonymous", type: "PERSON", confidence: 0.65 }
+                ]
+            },
+            
+            tsdna: {
+                familyId: "TSDNA-FAM-789",
+                similarityScore: 0.87,
+                confidence: "High",
+                linkedThreats: [
+                    { id: "THR-2023-156", similarity: 0.89, date: "2023-12-08" },
+                    { id: "THR-2023-203", similarity: 0.82, date: "2023-11-22" },
+                    { id: "THR-2024-012", similarity: 0.78, date: "2024-01-10" }
+                ],
+                fingerprint: {
+                    writingStyle: "Aggressive, urgent tone",
+                    vocabulary: "Technical, threatening language",
+                    structure: "Short sentences, imperative mood",
+                    patterns: "Time-specific threats, location details"
+                }
+            },
+            
+            riskBreakdown: {
+                severity: 0.85,
+                metadata: 0.72,
+                reoffense: 0.89,
+                immediacy: 0.91,
+                total: 0.84
+            }
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadThreatDataFromURL();
+            initializeRiskChart();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            auth.onAuthStateChanged((user) => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+
+        // Load threat data from URL parameter
+        function loadThreatDataFromURL() {
+            // Get threat ID from URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const threatId = urlParams.get('id');
+            
+            if (threatId) {
+                // For now, we'll use the same dummy data for all threats
+                // In a real app, you'd fetch different data based on the threatId
+                loadThreatData(threatId);
+            } else {
+                // If no ID provided, redirect back to dashboard
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        // Load threat data
+        function loadThreatData(threatId) {
+            // Update header
+            document.getElementById('threatId').textContent = threatId;
+            document.getElementById('threatTimestamp').textContent = threatData.timestamp;
+            
+            // Update risk badge
+            const riskBadge = document.getElementById('riskBadge');
+            riskBadge.textContent = threatData.riskLevel + ' Risk';
+            riskBadge.className = `risk-badge risk-${threatData.riskLevel.toLowerCase()}`;
+            
+            // Update source badge
+            const sourceBadge = document.getElementById('sourceBadge');
+            sourceBadge.textContent = threatData.source;
+            sourceBadge.className = `source-badge source-${threatData.source.toLowerCase()}`;
+            
+            // Load raw text
+            document.getElementById('rawText').textContent = threatData.rawText;
+            
+            // Load entities
+            loadEntities();
+            
+            // Load metadata
+            loadMetadata();
+            
+            // Load TSDNA
+            loadTSDNA();
+            
+            // Load risk factors
+            loadRiskFactors();
+        }
+
+        // Load extracted entities
+        function loadEntities() {
+            const entities = threatData.entities;
+            
+            // Locations
+            const locationsList = document.getElementById('locationsList');
+            locationsList.innerHTML = entities.locations.map(loc => 
+                `<div class="entity-item">
+                    <span class="entity-text">${loc.text}</span>
+                    <span class="entity-confidence">${Math.round(loc.confidence * 100)}%</span>
+                </div>`
+            ).join('');
+            
+            // Time references
+            const timeList = document.getElementById('timeList');
+            timeList.innerHTML = entities.timeReferences.map(time => 
+                `<div class="entity-item">
+                    <span class="entity-text">${time.text}</span>
+                    <span class="entity-confidence">${Math.round(time.confidence * 100)}%</span>
+                </div>`
+            ).join('');
+            
+            // Targets
+            const targetsList = document.getElementById('targetsList');
+            targetsList.innerHTML = entities.targets.map(target => 
+                `<div class="entity-item">
+                    <span class="entity-text">${target.text}</span>
+                    <span class="entity-confidence">${Math.round(target.confidence * 100)}%</span>
+                </div>`
+            ).join('');
+            
+            // Persons
+            const personsList = document.getElementById('personsList');
+            personsList.innerHTML = entities.persons.map(person => 
+                `<div class="entity-item">
+                    <span class="entity-text">${person.text}</span>
+                    <span class="entity-confidence">${Math.round(person.confidence * 100)}%</span>
+                </div>`
+            ).join('');
+        }
+
+        // Load metadata
+        function loadMetadata() {
+            const metadata = threatData.metadata;
+            const metadataGrid = document.getElementById('metadataGrid');
+            
+            metadataGrid.innerHTML = `
+                <div class="metadata-item">
+                    <span class="metadata-label">Sender IP</span>
+                    <span class="metadata-value">${metadata.senderIP}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Sender Email</span>
+                    <span class="metadata-value">${metadata.senderEmail}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">User Agent</span>
+                    <span class="metadata-value">${metadata.userAgent}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Message ID</span>
+                    <span class="metadata-value">${metadata.messageId}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Received From</span>
+                    <span class="metadata-value">${metadata.receivedFrom}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Authentication</span>
+                    <span class="metadata-value">${metadata.authenticationResults}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Originating IP</span>
+                    <span class="metadata-value">${metadata.xOriginatingIP}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Content Type</span>
+                    <span class="metadata-value">${metadata.contentType}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Content Length</span>
+                    <span class="metadata-value">${metadata.contentLength}</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">Subject</span>
+                    <span class="metadata-value">${metadata.subject}</span>
+                </div>
+            `;
+        }
+
+        // Load TSDNA data
+        function loadTSDNA() {
+            const tsdna = threatData.tsdna;
+            const tsdnaContent = document.getElementById('tsdnaContent');
+            
+            tsdnaContent.innerHTML = `
+                <div class="tsdna-header">
+                    <div class="tsdna-family">
+                        <span class="tsdna-label">Family ID</span>
+                        <span class="tsdna-value">${tsdna.familyId}</span>
+                    </div>
+                    <div class="tsdna-similarity">
+                        <span class="tsdna-label">Similarity Score</span>
+                        <span class="tsdna-score">${Math.round(tsdna.similarityScore * 100)}%</span>
+                    </div>
+                    <div class="tsdna-confidence">
+                        <span class="tsdna-label">Confidence</span>
+                        <span class="tsdna-confidence-badge">${tsdna.confidence}</span>
+                    </div>
+                </div>
+                
+                <div class="linked-threats">
+                    <h3>🔗 Linked Threats</h3>
+                    <div class="linked-list">
+                        ${tsdna.linkedThreats.map(threat => `
+                            <div class="linked-item">
+                                <span class="linked-id">${threat.id}</span>
+                                <span class="linked-similarity">${Math.round(threat.similarity * 100)}%</span>
+                                <span class="linked-date">${threat.date}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div class="fingerprint">
+                    <h3>🔍 Writing Fingerprint</h3>
+                    <div class="fingerprint-grid">
+                        <div class="fingerprint-item">
+                            <span class="fingerprint-label">Style</span>
+                            <span class="fingerprint-value">${tsdna.fingerprint.writingStyle}</span>
+                        </div>
+                        <div class="fingerprint-item">
+                            <span class="fingerprint-label">Vocabulary</span>
+                            <span class="fingerprint-value">${tsdna.fingerprint.vocabulary}</span>
+                        </div>
+                        <div class="fingerprint-item">
+                            <span class="fingerprint-label">Structure</span>
+                            <span class="fingerprint-value">${tsdna.fingerprint.structure}</span>
+                        </div>
+                        <div class="fingerprint-item">
+                            <span class="fingerprint-label">Patterns</span>
+                            <span class="fingerprint-value">${tsdna.fingerprint.patterns}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Load risk factors
+        function loadRiskFactors() {
+            const risk = threatData.riskBreakdown;
+            const riskFactors = document.getElementById('riskFactors');
+            
+            riskFactors.innerHTML = `
+                <div class="risk-factor">
+                    <span class="risk-label">Severity</span>
+                    <div class="risk-bar">
+                        <div class="risk-fill" style="width: ${risk.severity * 100}%"></div>
+                    </div>
+                    <span class="risk-value">${Math.round(risk.severity * 100)}%</span>
+                </div>
+                <div class="risk-factor">
+                    <span class="risk-label">Metadata</span>
+                    <div class="risk-bar">
+                        <div class="risk-fill" style="width: ${risk.metadata * 100}%"></div>
+                    </div>
+                    <span class="risk-value">${Math.round(risk.metadata * 100)}%</span>
+                </div>
+                <div class="risk-factor">
+                    <span class="risk-label">Reoffense</span>
+                    <div class="risk-bar">
+                        <div class="risk-fill" style="width: ${risk.reoffense * 100}%"></div>
+                    </div>
+                    <span class="risk-value">${Math.round(risk.reoffense * 100)}%</span>
+                </div>
+                <div class="risk-factor">
+                    <span class="risk-label">Immediacy</span>
+                    <div class="risk-bar">
+                        <div class="risk-fill" style="width: ${risk.immediacy * 100}%"></div>
+                    </div>
+                    <span class="risk-value">${Math.round(risk.immediacy * 100)}%</span>
+                </div>
+            `;
+        }
+
+        // Initialize risk breakdown chart
+        function initializeRiskChart() {
+            const ctx = document.getElementById('riskChart').getContext('2d');
+            const risk = threatData.riskBreakdown;
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Severity', 'Metadata', 'Reoffense', 'Immediacy'],
+                    datasets: [{
+                        data: [
+                            Math.round(risk.severity * 100),
+                            Math.round(risk.metadata * 100),
+                            Math.round(risk.reoffense * 100),
+                            Math.round(risk.immediacy * 100)
+                        ],
+                        backgroundColor: [
+                            '#dc3545', // Red for Severity
+                            '#ffc107', // Yellow for Metadata
+                            '#fd7e14', // Orange for Reoffense
+                            '#e83e8c'  // Pink for Immediacy
+                        ],
+                        borderColor: '#1a1a1a',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Navigation functions
+        function goBack() {
+            window.location.href = 'dashboard.html';
+        }
+
+        function createCase() {
+            alert(`Creating case for threat: ${threatData.id}`);
+        }
+
+        function exportEvidence() {
+            alert(`Exporting evidence for threat: ${threatData.id}`);
+        }
+    </script>
+</body>
+</html>

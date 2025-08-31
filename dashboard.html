@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoax Bomb Threat Tracing System - Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <h2>Hoax Threat System</h2>
+                <p class="subtitle">Investigator Portal</p>
+            </div>
+            
+            <ul class="sidebar-menu">
+                <li class="menu-item active">
+                    <a href="#" data-page="dashboard">
+                        <span class="text">Live Queue</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" data-page="cases">
+                        <span class="text">Cases</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" data-page="graph">
+                        <span class="text">Link Graph</span>
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" data-page="audit">
+                        <span class="text">Audit Log</span>
+                    </a>
+                </li>
+            </ul>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">👤</div>
+                    <div class="user-details">
+                        <span class="user-name">Analyst</span>
+                        <span class="user-role">Investigator</span>
+                    </div>
+                </div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h1>Live Threat Queue</h1>
+                    <p class="header-subtitle">Real-time flagged threats requiring investigation</p>
+                </div>
+                <div class="header-right">
+                    <div class="stats">
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalThreats">4</span>
+                            <span class="stat-label">Total Threats</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="highRiskThreats">2</span>
+                            <span class="stat-label">High Risk</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Search and Filter Bar -->
+            <div class="search-filter-bar">
+                <div class="search-box">
+
+                    <input type="text" id="searchInput" placeholder="Search by Event ID, Source, or content...">
+                </div>
+                <div class="filter-controls">
+                    <select id="riskFilter" class="filter-select">
+                        <option value="">All Risk Levels</option>
+                        <option value="High">High Risk</option>
+                        <option value="Medium">Medium Risk</option>
+                        <option value="Low">Low Risk</option>
+                    </select>
+                    <select id="sourceFilter" class="filter-select">
+                        <option value="">All Sources</option>
+                        <option value="Email">Email</option>
+                        <option value="Social">Social Media</option>
+                        <option value="Messaging">Messaging</option>
+                    </select>
+                    <button class="clear-filters-btn" onclick="clearFilters()">Clear Filters</button>
+                </div>
+            </div>
+
+            <!-- Threats Table -->
+            <div class="table-container">
+                <table class="threats-table">
+                    <thead>
+                        <tr>
+                            <th>Event ID</th>
+                            <th>Source</th>
+                            <th>Risk Level</th>
+                            <th>Timestamp</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="threatsTableBody">
+                        <!-- Table content will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+
+                <h3>No threats found</h3>
+                <p>Try adjusting your search criteria or filters</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Threat Detail Modal (placeholder for future implementation) -->
+    <div class="modal" id="threatModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Threat Details</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Threat detail view will be implemented here...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8_wj_TBlxDGzYljg5P5yARc8YI_eVfjU",
+            authDomain: "tracedna-6b504.firebaseapp.com",
+            projectId: "tracedna-6b504",
+            storageBucket: "tracedna-6b504.firebasestorage.app",
+            messagingSenderId: "80227253487",
+            appId: "1:80227253487:web:895355b662a8915b092f1a",
+            measurementId: "G-W211WK6WBE"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Dummy threat data
+        const dummyThreats = [
+            {
+                id: "THR-2024-001",
+                source: "Email",
+                riskLevel: "High",
+                timestamp: "2024-01-15 14:32:18",
+                content: "Bomb threat at Central Station at 3 PM today",
+                sender: "anonymous@temp-mail.org",
+                location: "Central Station"
+            },
+            {
+                id: "THR-2024-002",
+                source: "Social",
+                riskLevel: "Medium",
+                timestamp: "2024-01-15 13:45:22",
+                content: "Something big happening downtown tomorrow",
+                sender: "@suspicious_user",
+                platform: "Twitter"
+            },
+            {
+                id: "THR-2024-003",
+                source: "Messaging",
+                riskLevel: "Low",
+                timestamp: "2024-01-15 12:18:45",
+                content: "Just kidding about the bomb thing",
+                sender: "+1234567890",
+                platform: "WhatsApp"
+            },
+            {
+                id: "THR-2024-004",
+                source: "Email",
+                riskLevel: "High",
+                timestamp: "2024-01-15 11:05:33",
+                content: "Explosive device planted in shopping mall",
+                sender: "threat@protonmail.com",
+                location: "Downtown Mall"
+            }
+        ];
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            loadThreats();
+            setupEventListeners();
+        });
+
+        // Check authentication
+        function checkAuth() {
+            auth.onAuthStateChanged((user) => {
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
+            });
+        }
+
+        // Load threats into table
+        function loadThreats(threats = dummyThreats) {
+            const tableBody = document.getElementById('threatsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            if (threats.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            emptyState.style.display = 'none';
+            tableBody.innerHTML = threats.map(threat => `
+                <tr class="threat-row" data-threat-id="${threat.id}">
+                    <td class="event-id">${threat.id}</td>
+                    <td class="source">
+                        <span class="source-badge source-${threat.source.toLowerCase()}">${threat.source}</span>
+                    </td>
+                    <td class="risk-level">
+                        <span class="risk-chip risk-${threat.riskLevel.toLowerCase()}">${threat.riskLevel}</span>
+                    </td>
+                    <td class="timestamp">${threat.timestamp}</td>
+                    <td class="actions">
+                        <button class="action-btn view-btn" onclick="viewThreat('${threat.id}')">View</button>
+                        <button class="action-btn case-btn" onclick="createCase('${threat.id}')">Case</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('searchInput').addEventListener('input', filterThreats);
+            document.getElementById('riskFilter').addEventListener('change', filterThreats);
+            document.getElementById('sourceFilter').addEventListener('change', filterThreats);
+            
+            // Sidebar navigation
+            document.querySelectorAll('.menu-item a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    navigateToPage(page);
+                });
+            });
+        }
+
+        // Filter threats based on search and filters
+        function filterThreats() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const riskFilter = document.getElementById('riskFilter').value;
+            const sourceFilter = document.getElementById('sourceFilter').value;
+            
+            let filteredThreats = dummyThreats.filter(threat => {
+                const matchesSearch = !searchTerm || 
+                    threat.id.toLowerCase().includes(searchTerm) ||
+                    threat.source.toLowerCase().includes(searchTerm) ||
+                    threat.content.toLowerCase().includes(searchTerm);
+                
+                const matchesRisk = !riskFilter || threat.riskLevel === riskFilter;
+                const matchesSource = !sourceFilter || threat.source === sourceFilter;
+                
+                return matchesSearch && matchesRisk && matchesSource;
+            });
+            
+            loadThreats(filteredThreats);
+            updateStats(filteredThreats);
+        }
+
+        // Update statistics
+        function updateStats(threats) {
+            document.getElementById('totalThreats').textContent = threats.length;
+            document.getElementById('highRiskThreats').textContent = 
+                threats.filter(t => t.riskLevel === 'High').length;
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('riskFilter').value = '';
+            document.getElementById('sourceFilter').value = '';
+            loadThreats(dummyThreats);
+            updateStats(dummyThreats);
+        }
+
+        // Navigate to different pages
+        function navigateToPage(page) {
+            // Update active menu item
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${page}"]`).parentElement.classList.add('active');
+            
+            // For now, just show alert (pages will be implemented later)
+            switch(page) {
+                case 'cases':
+                    window.location.href = 'case-management.html';
+                    break;
+                case 'graph':
+                    window.location.href = 'link-graph.html';
+                    break;
+                case 'audit':
+                    alert('Audit Log page will be implemented');
+                    break;
+            }
+        }
+
+        // View threat details
+        function viewThreat(threatId) {
+            // Navigate to threat detail page with threat ID as parameter
+            window.location.href = `threat-detail.html?id=${threatId}`;
+        }
+
+        // Create case from threat
+        function createCase(threatId) {
+            alert(`Creating case for threat: ${threatId}`);
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('threatModal').style.display = 'none';
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = 'login.html';
+            }).catch((error) => {
+                console.error('Logout error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

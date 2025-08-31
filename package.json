@@ -1,0 +1,33 @@
+{
+  "name": "hoax-bomb-threat-tracing-system",
+  "version": "1.0.0",
+  "description": "Professional threat investigation system for law enforcement and security agencies",
+  "main": "login.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve . -l 3000",
+    "build": "echo 'No build step required for static files'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "threat-detection",
+    "law-enforcement",
+    "security",
+    "investigation",
+    "firebase",
+    "cybersecurity"
+  ],
+  "author": "ghanishpatil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ghanishpatil/TRACEDNA.git"
+  },
+  "homepage": "https://github.com/ghanishpatil/TRACEDNA#readme",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
